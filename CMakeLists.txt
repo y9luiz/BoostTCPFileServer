@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.5)
+project(TCPBoostFileTranserServer)
+set (CMAKE_CXX_STANDARD 17)
+find_package(Boost REQUIRED HINTS "/home/luiz/Libraries/boost_1_75_0_instalation/lib/cmake" COMPONENTS system thread)
+if(${Boost_FOUND})
+    SET(EXTRA_SOURCE_FILES Common/tcp_message.cpp Common/tcp_message.hpp utils.hpp utils.cpp)
+    add_subdirectory(TCPServer)
+
+    add_executable(launch_server server.cpp ${EXTRA_SOURCE_FILES})
+    target_include_directories(launch_server PUBLIC ${CMAKE_SOURCE_DIR} ${Boost_INCLUDE_DIRS})
+    target_link_libraries(launch_server ${Boost_LIBRARIES} tcp_server tcp_connection )
+
+    add_subdirectory(TCPClient)
+    add_executable(launch_client client.cpp ${EXTRA_SOURCE_FILES})
+    target_include_directories(launch_client PUBLIC ${CMAKE_SOURCE_DIR} ${Boost_INCLUDE_DIRS})
+    target_link_libraries(launch_client ${Boost_LIBRARIES} tcp_client)
+endif()
