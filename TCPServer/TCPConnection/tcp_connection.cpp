@@ -15,7 +15,10 @@ TCP_Connection::pointer TCP_Connection::create(boost::asio::io_context& io_conte
 
 void TCP_Connection::start(){
     raw_data = new char [TCP_Message::HEADER_SIZE];
-    
+    start_time_str_ = make_daytime_string();
+    dst_folder_ = "./cnx_";dst_folder_+=start_time_str_;
+    boost::filesystem::create_directory(dst_folder_);
+    dst_folder_+="/";
     boost::asio::async_read(socket_,
         boost::asio::buffer(raw_data,4),
         boost::bind(
@@ -25,10 +28,6 @@ void TCP_Connection::start(){
 
 TCP_Connection::TCP_Connection(boost::asio::io_context & io_context) : socket_(io_context)
 {
-    start_time_str_ = make_daytime_string();
-    dst_folder_ = "./cnx_";dst_folder_+=start_time_str_;
-    boost::filesystem::create_directory(dst_folder_);
-    dst_folder_+="/";
 }
 
 void TCP_Connection::handle_write(const boost::system::error_code&  e /*error*/,
