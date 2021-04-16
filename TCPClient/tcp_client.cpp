@@ -13,7 +13,6 @@ TCP_Client::TCP_Client(boost::asio::io_context& io_context, char * ip)
 }
 void TCP_Client::handle_timeout()
 {
-   
     
 }
 
@@ -25,11 +24,12 @@ void TCP_Client::startTimeout(){
     timer_.expires_from_now(boost::posix_time::seconds(fileContentHandler::timeout_sec_));
     initialized_timeout = true;
     // We managed to cancel the timer. Start new asynchronous wait.
+    timer_.cancel_one();
     timer_.async_wait(boost::bind(&TCP_Client::handle_timeout, this));
-
   }
   else
   {
+
     socket_.close();
     // Too late, timer has already expired!
   }

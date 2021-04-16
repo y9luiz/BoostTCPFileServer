@@ -176,3 +176,28 @@ std::string make_daytime_string()
   strftime (buffer,30,"%Y%m%d%H%M%S",timeinfo);
   return buffer;
 }
+std::vector<FileData> subdivideFile(FileData f_data, int max_size)
+{
+    std::vector<FileData> files_list;
+    int buffer_size = 0;
+    int remeider = f_data.size%max_size;
+    int numb_files = f_data.size/max_size +1;
+    char ** data= new char *[numb_files];
+    int pos= 0;
+    int file_size = max_size;
+    std::cout<<f_data.size<<" sizao\n";
+    for(int i =0;i<numb_files;i++)
+    {
+        if(i==numb_files-1)
+        {
+            // add to list
+            file_size = remeider;
+        }
+        data[i] = new char[file_size];
+        memcpy(data[i],f_data.data+pos ,file_size);
+        files_list.push_back(FileData(data[i],file_size));
+        pos+=file_size;
+
+    }  
+    return files_list;
+}

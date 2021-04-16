@@ -33,6 +33,7 @@ vector<string> split(const string& str, const string& delim);
 std::vector<TCP_Packet> data2packetlist(FileData f_data);
 void  data2packetlist(FileData f_data, std::vector<TCP_Packet> & packet_list);
 FileData &  readFile(char * filename);
+std::vector<FileData> subdivideFile(FileData f_data, int max_size);
 void writeFile(char * filename, char * data);
 void writeFile(char * filename, char * data,int size);
 void writeFile(char * filename, FileData & f_data);

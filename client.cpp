@@ -15,20 +15,29 @@ int main(int argc, char ** argv)
             throw std::logic_error("insira o arquivo alvo");
         fileContentHandler::loadConfigFile("../config_server.txt");
         auto file_data = readFile(argv[1]);
+        auto file_data_list = subdivideFile(file_data,fileContentHandler::max_file_size_);
         boost::asio::io_context io_context;
         TCP_Client client(io_context,"127.0.0.1");
         client.start_client();
-
         std::vector<TCP_Packet> packet_list;
-        data2packetlist(file_data,packet_list);
 
+        data2packetlist(file_data,packet_list);
+        client.sendNumberPackets(file_data_list.size());
         client.sendNumberPackets(packet_list.size());
-        int cont_packs=1 ;
-        for(auto pack:packet_list)
-        {                  
-            client.sendPacket(pack);
-            std::cout<<"sended "<<cont_packs<<"/"<<packet_list.size()<<"\n";
-            cont_packs++;
+        delete file_data.data;
+
+        int total_size = packet_list.size();
+        int cont_packs=0 ;
+        for(auto file:file_data_list){
+            packet_list.clear();
+            data2packetlist(file,packet_list);
+
+            for(auto pack:packet_list)
+            {                  
+                client.sendPacket(pack);
+                std::cout<<"sended "<<cont_packs<<"/"<<total_size<<"\n";
+                cont_packs++;
+            }
         }
         io_context.run();
     }
