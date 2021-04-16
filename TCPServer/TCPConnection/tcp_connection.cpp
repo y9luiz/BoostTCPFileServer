@@ -23,7 +23,7 @@ void TCP_Connection::start(){
     boost::asio::async_read(socket_,
         boost::asio::buffer(raw_data,4),
         boost::bind(
-          &TCP_Connection::handle_read_n_packets, shared_from_this(),
+          &TCP_Connection::handle_read_n_files, shared_from_this(),
           boost::asio::placeholders::error));
 }
 
@@ -34,17 +34,25 @@ TCP_Connection::TCP_Connection(boost::asio::io_context & io_context) : socket_(i
 void TCP_Connection::handle_write(const boost::system::error_code&  e /*error*/,
       size_t /*bytes_transferred*/)
 {
-   /* if(!e && message_.getLastPacket().getSize()>0){
-        boost::asio::async_write(socket_, boost::asio::buffer(message_.getBody()),
-            boost::bind(&TCP_Connection::handle_write, this->shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));
-        
-        message_.clear();
+}
+void TCP_Connection::handle_read_n_files(const boost::system::error_code&  e /*error*/)
+{
+    if(!e)
+    {
+        raw_data[TCP_Packet::HEADER_SIZE]='\0';
+        numb_files_  = atoi(raw_data);    
+        std::cout<<"quantidade de arquivos "<<numb_files_<<"\n";
+    
+        delete raw_data;
+        raw_data = new char[TCP_Message::HEADER_SIZE+1];
+        raw_data[TCP_Message::HEADER_SIZE] = '\0';
+        // le o header do pacote atual
+        boost::asio::async_read(socket_,
+                boost::asio::buffer(raw_data,TCP_Message::HEADER_SIZE),
+                boost::bind(
+                &TCP_Connection::handle_read_n_packets, shared_from_this(),
+                boost::asio::placeholders::error));
     }
-    else{
-        socket_.close();
-    }*/
 }
 
 void TCP_Connection::handle_read_n_packets(const boost::system::error_code&  e /*error*/)
@@ -52,8 +60,8 @@ void TCP_Connection::handle_read_n_packets(const boost::system::error_code&  e /
     if(!e)
     {
         
-        numb_packets = atoi(raw_data);        
-        std::cout<<"total de pacotes "<<numb_packets<<"\n";
+        numb_packets_ = atoi(raw_data);        
+        std::cout<<"total de pacotes "<<numb_packets_<<"\n";
         delete raw_data;
         raw_data = new char[TCP_Message::HEADER_SIZE+1];
         raw_data[TCP_Message::HEADER_SIZE] = '\0';
@@ -82,7 +90,6 @@ void TCP_Connection::handle_read_header(const boost::system::error_code&  e /*er
             boost::bind(
             &TCP_Connection::handle_read_body, shared_from_this(),
             boost::asio::placeholders::error));
-        
     }else{
         if(!decoded)
         {
@@ -90,14 +97,27 @@ void TCP_Connection::handle_read_header(const boost::system::error_code&  e /*er
         }
 
         std::vector<FileData> file_data_list;
-        std::cout<<"total de pacotes na fila "<<message_.getPacketList().size()<<"\n";
-        std::string filename = dst_folder_; filename+= fileContentHandler::prefix_; filename += start_time_str_;
-        std::cout<<"file "<<filename<<"\n";
-        for(auto packet: message_.getPacketList())
-        {
-            writeFile((char*)filename.c_str(),packet.getData()+4,packet.getSize()-4);
-        }
-
+        
+        auto packet_list = message_.getPacketList();
+        int pos = 0;
+        int numb_packs = (numb_packets_)/(numb_files_)+1;
+        int remainder = (numb_packets_)%(numb_files_);
+        if(remainder)
+            numb_files_++;
+        for(int i =0;i<numb_files_;i++){
+            
+            std::string filename = dst_folder_; filename+= fileContentHandler::prefix_; filename += start_time_str_;
+            if(numb_files_>1){
+                filename+="_";
+                filename+=std::to_string(i);
+            }
+            if(i==numb_files_-1 && i>0)
+                numb_packs = remainder;
+            for(int j=pos;j<pos+numb_packs;j++)
+                 writeFile((char*)filename.c_str(),packet_list[j].getData()+4,packet_list[j].getSize()-4);
+            pos +=numb_packs;
+        }   
+        std::cout<<"files writed at "<<dst_folder_<<"\n";
         socket_.close();
     }
 }

@@ -16,6 +16,7 @@ int main(int argc, char ** argv)
         fileContentHandler::loadConfigFile("../config_server.txt");
         auto file_data = readFile(argv[1]);
         auto file_data_list = subdivideFile(file_data,fileContentHandler::max_file_size_);
+
         boost::asio::io_context io_context;
         TCP_Client client(io_context,"127.0.0.1");
         client.start_client();
@@ -27,7 +28,9 @@ int main(int argc, char ** argv)
         delete file_data.data;
 
         int total_size = packet_list.size();
-        int cont_packs=0 ;
+        if(packet_list.size()<file_data_list.size())
+            total_size = file_data_list.size();
+        int cont_packs=1;
         for(auto file:file_data_list){
             packet_list.clear();
             data2packetlist(file,packet_list);
