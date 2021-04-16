@@ -1,27 +1,54 @@
 #include "tcp_client.hpp"
 #include <string.h>
 #include <iostream>
-TCP_Client::TCP_Client(boost::asio::io_context& io_context, char * ip, int port_num)
-    : io_context_(io_context), socket_(io_context)
+#include <boost/bind.hpp>
+
+TCP_Client::TCP_Client(boost::asio::io_context& io_context, char * ip)
+    : io_context_(io_context), socket_(io_context), timer_(io_context)
 {
-    tcp::resolver resolver(io_context);
+    boost::asio::ip::tcp::resolver resolver(io_context);
       end_point_ = boost::asio::ip::tcp::endpoint (boost::asio::ip::address::from_string(ip),
-      port_num);
+      fileContentHandler::port_);
     //end_points = resolver.resolve(query);
 }
+void TCP_Client::handle_timeout()
+{
+   
+    
+}
 
+bool initialized_timeout = false;
+void TCP_Client::startTimeout(){
+    
+  if (timer_.expires_from_now().seconds() > 0 || !initialized_timeout)
+  {
+    timer_.expires_from_now(boost::posix_time::seconds(fileContentHandler::timeout_sec_));
+    initialized_timeout = true;
+    // We managed to cancel the timer. Start new asynchronous wait.
+    timer_.async_wait(boost::bind(&TCP_Client::handle_timeout, this));
+
+  }
+  else
+  {
+    socket_.close();
+    // Too late, timer has already expired!
+  }
+  
+}
 void TCP_Client::start_client()
 {
-  tcp::resolver::iterator end;
+  boost::asio::ip::tcp::resolver::iterator end;
   boost::system::error_code error = boost::asio::error::host_not_found;
   
   socket_.connect(end_point_, error);
+  startTimeout();
   if(error)
   {
     std::cout<<error<<"\n";
     std::cout<<"could not to connect "<<"\n";
     exit(0);
   }
+  startTimeout();
 }
 
 void TCP_Client::read_header()
@@ -39,6 +66,7 @@ void TCP_Client::read_header()
 }
 void TCP_Client::sendPacket(std::string msg)
 { 
+  startTimeout();
 
   // pacote com header e body
   // o header é o tamanho do proprio pacote
@@ -54,6 +82,7 @@ void TCP_Client::sendPacket(std::string msg)
 }
 void TCP_Client::sendPacket(TCP_Packet & packet)
 { 
+  startTimeout();
   boost::asio::write(socket_,boost::asio::buffer(packet.getData(),packet.getSize()));
 }
 void TCP_Client::sendNumberPackets(int n_packets)
