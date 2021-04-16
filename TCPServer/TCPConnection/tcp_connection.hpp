@@ -25,6 +25,8 @@ private:
 
   void handle_write(const boost::system::error_code& /*error*/,
       size_t /*bytes_transferred*/);
+      
+  void handle_read_n_files(const boost::system::error_code&  e /*error*/);
   void handle_read_n_packets(const boost::system::error_code&  e /*error*/);
   void handle_read_next_packet_header(const boost::system::error_code&  e /*error*/);
   void handle_read_header(const boost::system::error_code& /*error*/);
@@ -33,10 +35,12 @@ private:
   tcp::socket socket_; 
   char *raw_data;
   TCP_Message message_;
-  int numb_packets=0;
+  int numb_packets = 0;
+  int numb_files_ = 0;
   std::string friend make_daytime_string();
   std::string start_time_str_;
   std::string dst_folder_;
+  
 };
 
 
