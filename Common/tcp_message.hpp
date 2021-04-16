@@ -50,16 +50,27 @@ class TCP_Message{
             std::string full_msg = "";
             for(auto packet:packet_deque_)
             {
+                //std::cout<<packet.getBody()<<"\n";
                 full_msg += packet.getBody();
             }
             return full_msg;
         }
-
+        inline char ** getContentBufferPtr()
+        {
+            char ** content_ptr = (char **) malloc(sizeof(char*)*packet_deque_.size());
+            int i=0;
+            for(auto packet:packet_deque_)
+            {
+                content_ptr[i] = packet.getBody();
+                i++;
+            }
+            return content_ptr;
+        }
         enum SIZE_INFO{
             HEADER_SIZE = 4,
             MAX_BODY_SIZE = 1500
         };
-        static  void  int2MessageHeader(int n_packets, char * header)
+        /*static  void  int2MessageHeader(int n_packets, char * header)
         {
             //char* header = new char[HEADER_SIZE];
             for(int i=HEADER_SIZE-1;i>=0;i--)
@@ -68,8 +79,9 @@ class TCP_Message{
                 n_packets/=10;
             }
             header[HEADER_SIZE] = '\0';
+            
             //return header;
-        }
+        }*/
         int n_packets =0;
         int body_length_;
         TCP_Packet& getLastPacket()

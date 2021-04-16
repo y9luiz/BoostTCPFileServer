@@ -1,12 +1,14 @@
 #include "utils.hpp"
 #include <fstream>
 #include <iostream>
+#include <string.h>
 bool is_number(const std::string& s)
 {
     return !s.empty() && std::find_if(s.begin(), 
         s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }
-vector<string> split(const string& str, const string& delim)
+/*
+vector<string> splitString(const string& str, const string& delim)
 {
     vector<string> tokens;
     size_t prev = 0, pos = 0;
@@ -20,47 +22,103 @@ vector<string> split(const string& str, const string& delim)
     }
     while (pos < str.length() && prev < str.length());
     return tokens;
-}
-std::vector<std::string> data2packetlist(std::string data, int max_size_pack)
+}*/
+void  int2MessageHeader(int n_packets, char * header)
 {
-    std::vector<std::string> packet_list;
-    std::string packet;
-    for(int i=0;i<data.size();i++)
+    //char* header = new char[HEADER_SIZE];
+    for(int i=TCP_Packet::HEADER_SIZE-1;i>=0;i--)
     {
-        packet+=data[i];
-        if(i%max_size_pack==0 && i>0)
-        {
-            packet_list.push_back(packet);
-            packet.clear();
+        header[i] = n_packets%10+'0';
+        n_packets/=10;
+    }
+    header[TCP_Packet::HEADER_SIZE] = '\0';
+    //return header;
+}
+std::vector<TCP_Packet> data2packetlist( FileData f_data)
+{
+    // adicionamos cada caractere do arquivo a um pacote tcp
+    int num_packets = f_data.size/(TCP_Packet::BODY_MAX_SIZE+TCP_Packet::HEADER_SIZE)+1;
+    std::vector<TCP_Packet> packet_list;
+
+    int remeinder = f_data.size%(TCP_Packet::BODY_MAX_SIZE+TCP_Packet::HEADER_SIZE);
+    int packet_size = TCP_Packet::BODY_MAX_SIZE+TCP_Packet::HEADER_SIZE;
+    char data[ TCP_Packet::BODY_MAX_SIZE+TCP_Packet::HEADER_SIZE];
+    int2MessageHeader(packet_size,data);
+    int i = 0;
+    for(int i=0;i< num_packets;i++)
+    {   
+        if(i==num_packets-1){
+            packet_size = remeinder;
+            int2MessageHeader(packet_size,data);
         }
-
+        memcpy(data+TCP_Packet::HEADER_SIZE,f_data.data+i*packet_size,(i+1)*packet_size);
+        //data[TCP_Packet::HEADER_SIZE+packet_size]='\0';
+        //std::cout<<"dado "<<data<<"\n";
+        packet_list.push_back(TCP_Packet(data));
+        //std::cout<<"body "<<packet_list.back().getBody()<<"\n";
+        i++;
     }
-    if(!packet.empty())
-    {
-            packet_list.push_back(packet);
 
-    }
+
     return packet_list;
 
 }
-std::string readFile(char * filename)
+void  data2packetlist(FileData f_data, std::vector<TCP_Packet> &  packet_list)
+{
+    // adicionamos cada caractere do arquivo a um pacote tcp
+    int num_packets = f_data.size/(TCP_Packet::BODY_MAX_SIZE)+1;
+
+    int remeinder = f_data.size%(TCP_Packet::BODY_MAX_SIZE);
+    
+    int packet_size =TCP_Packet::BODY_MAX_SIZE;
+    if(f_data.size<packet_size)
+        packet_size = f_data.size;
+    
+    //int i = 0;
+    int buff_size =0;
+    char * data = new char[ TCP_Packet::BODY_MAX_SIZE+TCP_Packet::HEADER_SIZE];
+
+    for(int i=0;i< num_packets;i++)
+    {   
+        
+        if(i==num_packets-1)
+        {
+            packet_size = remeinder;
+        }
+        int2MessageHeader(packet_size,data);
+
+        memcpy(data+TCP_Packet::HEADER_SIZE,f_data.data+buff_size,packet_size);
+        buff_size+=packet_size;
+        TCP_Packet p (data);
+        //std::cout<<"meu data: "<<data<<"\n";
+        //std::cout<<"meu data da fonte: "<<p.getSize()<<"\n";
+        packet_list.push_back(p);
+
+        memset(data,0,TCP_Packet::BODY_MAX_SIZE+TCP_Packet::HEADER_SIZE);
+    }
+    delete data;
+    int i =0;
+   
+}
+FileData &  readFile(char * filename)
 {   
     std::ifstream f(filename,std::ios::binary);
+    static FileData d;
+
     if(f.is_open())
     {
-        std::string data;
-        std::string output;
-
-        char buffer[1024];
-        while(f.read(buffer,sizeof(buffer)))
+        std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(f), {});
+        d.size = buffer.size();
+        d.data = new char [buffer.size()];
+        int i=0;
+        for(auto byte:buffer)
         {
-            data.assign(buffer);
-            output+=data;
+            d.data[i] = byte;
+            i++;
         }
-        //std::cout<<data<<"\n";
+
         f.close();
-        
-        return output;
+        return d;
     }
     throw std::logic_error("nao foi possível abrir arquivo de entrada\n");
 }
@@ -70,6 +128,7 @@ void writeFile(char * filename, char * data){
     if(f.is_open())
     {
         f.write(output.c_str(),output.size());
+        //std::cout<<output.size()<<"\n";
         //f<<data;
         f.close();
 
@@ -77,4 +136,43 @@ void writeFile(char * filename, char * data){
     else
         throw std::logic_error("nao foi possível abrir arquivo de saída\n");
 
+}
+void writeFile(char * filename, FileData & f_data){
+    std::ofstream f(filename, std::fstream::app);
+    //std::cout<<"f_data "<<f_data.data<<" "<<f_data.size<<"\n";
+    if(f.is_open())
+    {
+        //std::cout<<"escrevendo "<<f_data.data<<" tam "<<f_data.size<<"\n";
+        f.write(f_data.data,f_data.size);
+        f.close();
+
+    }
+    else
+        throw std::logic_error("nao foi possível abrir arquivo de saída\n");
+
+}
+void writeFile(char * filename, char *data,int size){
+    FileData d = FileData(data,size);
+    writeFile(filename,d);
+}
+void writeFile(char * filename, std::vector<FileData> & data_file_list)
+{
+    //std::cout<<"olha o arquivo\n";
+    for(auto data_file:data_file_list)
+    {
+       //std::cout<<data_file.data<<"\n";
+       writeFile(filename,data_file); 
+
+    }
+    
+}
+
+std::string make_daytime_string()
+{
+  using namespace std; // For time_t, time and ctime;
+  time_t now = time(0);
+  char buffer[30];
+  struct tm * timeinfo = localtime (&now);
+  strftime (buffer,30,"%Y%m%d%H%M%S",timeinfo);
+  return buffer;
 }

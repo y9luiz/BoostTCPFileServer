@@ -34,6 +34,9 @@ private:
   char *raw_data;
   TCP_Message message_;
   int numb_packets=0;
+  std::string friend make_daytime_string();
+  std::string start_time_str_;
+  std::string dst_folder_;
 };
 
 
